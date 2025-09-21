@@ -2,59 +2,63 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PoundSterlingIcon, Users, Calendar, Tag } from "lucide-react"
-
-// Define the Summary type to match what page.tsx provides
-interface Summary {
-  total: number
-  utkarshSpent: number
-  tanyaSpent: number
-  utkarshNet: number
-  tanyaNet: number
-  categoryTotals: { [key: string]: number }
-  monthlyTotals: { [key: string]: number }
-}
+import type { Summary } from "@/lib/types"
 
 interface SummaryDashboardProps {
   summary: Summary
   detailed?: boolean
 }
 
-// Helper function to format currency
-const formatCurrency = (amount: number) => {
-  if (typeof amount !== 'number' || isNaN(amount)) {
-    return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(0);
-  }
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-  }).format(amount)
-}
-
 export function SummaryDashboard({ summary, detailed = false }: SummaryDashboardProps) {
-  // Add a loading/safety check
-  if (!summary) {
-    return <div>Loading summary...</div>
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency: "GBP",
+    }).format(amount)
   }
 
   // Prepare category data for pie chart
-  const categoryData = Object.entries(summary.categoryTotals || {})
+  const categoryData = Object.entries(summary.categoryTotals)
     .filter(([, amount]) => amount > 0)
     .map(([category, amount]) => ({
       name: category,
       value: amount,
-      percentage: summary.total > 0 ? ((amount / summary.total) * 100).toFixed(1) : "0.0",
+      percentage: ((amount / summary.totalSpent) * 100).toFixed(1),
     }))
     .sort((a, b) => b.value - a.value)
 
   // Prepare monthly data for horizontal bar chart
-  const monthlyData = Object.entries(summary.monthlyTotals || {})
+  const monthlyData = Object.entries(summary.monthlyTotals)
     .filter(([, amount]) => amount > 0)
     .map(([month, amount]) => ({
       month: month.slice(0, 3), // Abbreviate month names
       amount,
     }))
 
-  const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#f97316", "#84cc16"]
+  const COLORS = [
+    "#3b82f6", // blue-500
+    "#10b981", // emerald-500
+    "#f59e0b", // amber-500
+    "#ef4444", // red-500
+    "#8b5cf6", // violet-500
+    "#06b6d4", // cyan-500
+    "#f97316", // orange-500
+    "#84cc16", // lime-500
+  ]
+
+  // Chart configurations
+  const categoryChartConfig = {
+    value: {
+      label: "Amount",
+    },
+  }
+
+  const monthlyChartConfig = {
+    amount: {
+      label: "Amount",
+      color: "#3b82f6",
+    },
+  }
 
   return (
     <div className="w-full space-y-4">
@@ -67,7 +71,7 @@ export function SummaryDashboard({ summary, detailed = false }: SummaryDashboard
               <PoundSterlingIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-lg sm:text-xl font-bold">{formatCurrency(summary.total)}</div>
+              <div className="text-lg sm:text-xl font-bold">{formatCurrency(summary.totalSpent)}</div>
             </CardContent>
           </Card>
 
@@ -77,7 +81,7 @@ export function SummaryDashboard({ summary, detailed = false }: SummaryDashboard
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-lg sm:text-xl font-bold">{formatCurrency(summary.utkarshSpent)}</div>
+              <div className="text-lg sm:text-xl font-bold">{formatCurrency(summary.utkarshTotalPaid)}</div>
               <p className="text-xs text-muted-foreground">Total spending</p>
             </CardContent>
           </Card>
@@ -88,7 +92,7 @@ export function SummaryDashboard({ summary, detailed = false }: SummaryDashboard
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-lg sm:text-xl font-bold">{formatCurrency(summary.tanyaSpent)}</div>
+              <div className="text-lg sm:text-xl font-bold">{formatCurrency(summary.tanyaTotalPaid)}</div>
               <p className="text-xs text-muted-foreground">Total spending</p>
             </CardContent>
           </Card>
@@ -109,11 +113,12 @@ export function SummaryDashboard({ summary, detailed = false }: SummaryDashboard
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4 pt-4">
+                  <div className="space-y-4">
+                    {/* Horizontal stacked bar */}
                     <div className="w-full">
                       <div className="flex rounded-lg overflow-hidden h-6 bg-muted">
                         {categoryData.map((item, index) => {
-                          const percentage = summary.total > 0 ? (item.value / summary.total) * 100 : 0
+                          const percentage = (item.value / summary.totalSpent) * 100
                           return (
                             <div
                               key={item.name}
@@ -129,6 +134,7 @@ export function SummaryDashboard({ summary, detailed = false }: SummaryDashboard
                       </div>
                     </div>
 
+                    {/* Category legend */}
                     <div className="space-y-2">
                       {categoryData.map((item, index) => (
                         <div key={item.name} className="flex items-center justify-between">
@@ -150,20 +156,20 @@ export function SummaryDashboard({ summary, detailed = false }: SummaryDashboard
               </Card>
             )}
 
-            {/* Monthly Spending */}
+            {/* Monthly Spending - Horizontal Bars */}
             {monthlyData.length > 0 && (
               <Card className="shadow-lg border-border/50 backdrop-blur-sm">
-                <CardHeader className="pb-0">
+                <CardHeader className="pb-0 text-center">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Calendar className="h-5 w-5" />
                     Monthly Spending
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3 pt-4">
-                    {monthlyData.map((item) => {
+                  <div className="space-y-3">
+                    {monthlyData.map((item, index) => {
                       const maxAmount = Math.max(...monthlyData.map((d) => d.amount))
-                      const percentage = maxAmount > 0 ? (item.amount / maxAmount) * 100 : 0
+                      const percentage = (item.amount / maxAmount) * 100
 
                       return (
                         <div key={item.month} className="space-y-1">
@@ -193,53 +199,53 @@ export function SummaryDashboard({ summary, detailed = false }: SummaryDashboard
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             <Card className="shadow-lg border-border/50 backdrop-blur-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Utkarsh's Summary</CardTitle>
+              <CardHeader className="pb-0">
+                <CardTitle className="text-lg">Payment Breakdown</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Total Paid:</span>
-                  <span className="font-mono text-sm sm:text-base">{formatCurrency(summary.utkarshSpent)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Fair Share (50%):</span>
-                  <span className="font-mono text-sm sm:text-base">{formatCurrency(summary.total / 2)}</span>
-                </div>
-                <div className="flex justify-between items-center pt-2 border-t">
-                  <span className="text-sm font-medium">Net Balance:</span>
-                  <span
-                    className={`font-mono font-bold text-sm sm:text-base ${
-                      summary.utkarshNet >= 0 ? "text-green-600" : "text-red-600"
-                    }`}
-                  >
-                    {formatCurrency(summary.utkarshNet)}
-                  </span>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Utkarsh Total Paid:</span>
+                    <span className="font-mono text-sm sm:text-base">{formatCurrency(summary.utkarshTotalPaid)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Utkarsh Should Pay:</span>
+                    <span className="font-mono text-sm sm:text-base">{formatCurrency(summary.utkarshTotalOwed)}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t">
+                    <span className="text-sm font-medium">Utkarsh Net:</span>
+                    <span
+                      className={`font-mono font-bold text-sm sm:text-base ${summary.utkarshNet >= 0 ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {formatCurrency(summary.utkarshNet)}
+                    </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="shadow-lg border-border/50 backdrop-blur-sm">
-               <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Tanya's Summary</CardTitle>
+              <CardHeader className="pb-0">
+                <CardTitle className="text-lg">Payment Breakdown</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Total Paid:</span>
-                  <span className="font-mono text-sm sm:text-base">{formatCurrency(summary.tanyaSpent)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Fair Share (50%):</span>
-                  <span className="font-mono text-sm sm:text-base">{formatCurrency(summary.total / 2)}</span>
-                </div>
-                <div className="flex justify-between items-center pt-2 border-t">
-                  <span className="text-sm font-medium">Net Balance:</span>
-                  <span
-                    className={`font-mono font-bold text-sm sm:text-base ${
-                      summary.tanyaNet >= 0 ? "text-green-600" : "text-red-600"
-                    }`}
-                  >
-                    {formatCurrency(summary.tanyaNet)}
-                  </span>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Tanya Total Paid:</span>
+                    <span className="font-mono text-sm sm:text-base">{formatCurrency(summary.tanyaTotalPaid)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Tanya Should Pay:</span>
+                    <span className="font-mono text-sm sm:text-base">{formatCurrency(summary.tanyaTotalOwed)}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t">
+                    <span className="text-sm font-medium">Tanya Net:</span>
+                    <span
+                      className={`font-mono font-bold text-sm sm:text-base ${summary.tanyaNet >= 0 ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {formatCurrency(summary.tanyaNet)}
+                    </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>

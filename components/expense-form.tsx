@@ -1,61 +1,44 @@
 "use client"
 
-import React, { useState } from "react"
+import type React from "react"
+import { getCurrentMonth } from "@/lib/utils"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
+import { MONTHS, CATEGORIES, PAID_BY_OPTIONS, SPLIT_TYPE_OPTIONS } from "@/lib/constants"
+import type { Expense } from "@/lib/types"
 
-// This is a simplified Expense type that matches what page.tsx expects
-interface ExpenseFormData {
-  description: string
-  amount: number
-  paidBy: "Utkarsh" | "Tanya"
-  date: string
-  category: string
-}
-
-// The onSubmit prop now expects an async function with the correct data shape
 interface ExpenseFormProps {
-  onSubmit: (expense: Omit<ExpenseFormData, "id">) => Promise<void>
+  onSubmit: (expense: Omit<Expense, "id" | "utkarshPays" | "tanyaPays" | "createdAt">) => void
 }
-
-// A list of categories for the dropdown
-const CATEGORIES = [
-  "Groceries",
-  "Dining Out",
-  "Transport",
-  "Shopping",
-  "Entertainment",
-  "Utilities",
-  "Rent/Mortgage",
-  "Health",
-  "Other",
-]
 
 export function ExpenseForm({ onSubmit }: ExpenseFormProps) {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // A simplified initial state that matches the new data model
-  const getInitialState = () => ({
+  const [formData, setFormData] = useState({
+    month: getCurrentMonth(),
+    category: "Miscellaneous",
     description: "",
     amount: 0,
-    paidBy: "Utkarsh" as "Utkarsh" | "Tanya",
-    date: new Date().toISOString().split("T")[0], // Defaults to today's date
-    category: "Other",
+    paidBy: "Both",
+    splitType: "50/50",
+    utkarshIncome: 0,
+    tanyaIncome: 0,
   })
-
-  const [formData, setFormData] = useState(getInitialState())
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log("[v0] Form submission started with data:", formData)
 
     if (!formData.description || formData.amount <= 0) {
       toast({
-        title: "Missing Information",
-        description: "Please provide a description and an amount.",
+        title: "Error",
+        description: "Please fill in all required fields.",
         variant: "destructive",
       })
       return
@@ -64,13 +47,26 @@ export function ExpenseForm({ onSubmit }: ExpenseFormProps) {
     setIsSubmitting(true)
     try {
       await onSubmit(formData)
-      setFormData(getInitialState()) // Reset form to initial state
+      console.log("[v0] Form submission successful")
+
+      // Reset form
+      setFormData({
+        month: getCurrentMonth(),
+        category: "Miscellaneous",
+        description: "",
+        amount: 0,
+        paidBy: "Both",
+        splitType: "50/50",
+        utkarshIncome: 0,
+        tanyaIncome: 0,
+      })
+
       toast({
-        title: "Success!",
-        description: "Expense has been added.",
+        title: "Expense Added",
+        description: "Your expense has been successfully recorded.",
       })
     } catch (error) {
-      console.error("Form submission error:", error)
+      console.error("[v0] Form submission error:", error)
       toast({
         title: "Error",
         description: "Failed to add expense. Please try again.",
@@ -82,81 +78,182 @@ export function ExpenseForm({ onSubmit }: ExpenseFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <Input
-          id="description"
-          placeholder="e.g., Coffee, Train tickets"
-          value={formData.description}
-          onChange={e => setFormData({ ...formData, description: e.target.value })}
-        />
-      </div>
+    <div className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Month Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="month">Month</Label>
+            <Select
+              value={formData.month}
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, month: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select month" />
+              </SelectTrigger>
+              <SelectContent>
+                {MONTHS.map((month) => (
+                  <SelectItem key={month} value={month}>
+                    {month}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-      <div className="grid grid-cols-2 gap-4">
+          {/* Category Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
+            <Select
+              value={formData.category}
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, category: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Description */}
         <div className="space-y-2">
-          <Label htmlFor="amount">Amount (£)</Label>
-          <Input
-            id="amount"
-            type="number"
-            step="0.01"
-            placeholder="0.00"
-            value={formData.amount || ""}
-            onChange={e => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
+          <Label htmlFor="description">Description</Label>
+          <Textarea
+            id="description"
+            placeholder="Enter expense description..."
+            className="min-h-20"
+            value={formData.description}
+            onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="date">Date</Label>
-          <Input
-            id="date"
-            type="date"
-            value={formData.date}
-            onChange={e => setFormData({ ...formData, date: e.target.value })}
-          />
-        </div>
-      </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="paidBy">Paid By</Label>
-          <Select
-            value={formData.paidBy}
-            onValueChange={(value: "Utkarsh" | "Tanya") => setFormData({ ...formData, paidBy: value })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Utkarsh">Utkarsh</SelectItem>
-              <SelectItem value="Tanya">Tanya</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="category">Category</Label>
-          <Select
-            value={formData.category}
-            onValueChange={value => setFormData({ ...formData, category: value })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORIES.map(category => (
-                <SelectItem key={category} value={category}>
-                  {category}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Amount */}
+          <div className="space-y-2">
+            <Label htmlFor="amount">Amount (£)</Label>
+            <Input
+              id="amount"
+              type="number"
+              step="0.01"
+              placeholder="0.00"
+              value={formData.amount || ""}
+              onChange={(e) => setFormData((prev) => ({ ...prev, amount: Number.parseFloat(e.target.value) || 0 }))}
+            />
+          </div>
 
-      <div className="flex justify-end pt-2">
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Adding..." : "Add Expense"}
-        </Button>
-      </div>
-    </form>
+          {/* Paid By */}
+          <div className="space-y-2">
+            <Label htmlFor="paidBy">Paid By</Label>
+            <Select
+              value={formData.paidBy}
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, paidBy: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Who paid?" />
+              </SelectTrigger>
+              <SelectContent>
+                {PAID_BY_OPTIONS.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Split Type */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Split Type */}
+          <div className="space-y-2">
+            <Label htmlFor="splitType">Split Type</Label>
+            <Select
+              value={formData.splitType}
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, splitType: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="How to split?" />
+              </SelectTrigger>
+              <SelectContent>
+                {SPLIT_TYPE_OPTIONS.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Empty div to maintain grid structure */}
+          <div></div>
+        </div>
+
+        {/* Income Fields - Only show when split type is Income% */}
+        {formData.splitType === "Income%" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-card rounded-lg border">
+            <div className="space-y-2">
+              <Label htmlFor="utkarshIncome">Utkarsh Income (£)</Label>
+              <Input
+                id="utkarshIncome"
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={formData.utkarshIncome || ""}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, utkarshIncome: Number.parseFloat(e.target.value) || 0 }))
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tanyaIncome">Tanya Income (£)</Label>
+              <Input
+                id="tanyaIncome"
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={formData.tanyaIncome || ""}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, tanyaIncome: Number.parseFloat(e.target.value) || 0 }))
+                }
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Submit Button */}
+        <div className="flex justify-end space-x-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              setFormData({
+                month: getCurrentMonth(),
+                category: "Miscellaneous",
+                description: "",
+                amount: 0,
+                paidBy: "Both",
+                splitType: "50/50",
+                utkarshIncome: 0,
+                tanyaIncome: 0,
+              })
+            }
+            disabled={isSubmitting}
+          >
+            Reset
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Adding..." : "Add Expense"}
+          </Button>
+        </div>
+      </form>
+    </div>
   )
 }

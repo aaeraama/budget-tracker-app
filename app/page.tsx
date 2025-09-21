@@ -1,131 +1,25 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ExpenseForm } from "@/components/expense-form";
-import ExpenseList from "@/components/expense-list";
-import { SummaryDashboard } from "@/components/summary-dashboard";
-import { ExpenseFilters } from "@/components/expense-filters";
-import { PWAInstall } from "@/components/pwa-install";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { Home, Plus, List, BarChart3, Wallet } from "lucide-react";
-import { db } from "@/lib/firebase.js";
-import { collection, addDoc, onSnapshot, deleteDoc, doc, query, QuerySnapshot } from "firebase/firestore";
-
-interface Expense {
-  id: string;
-  description: string;
-  amount: number;
-  paidBy: "Utkarsh" | "Tanya";
-  date: string;
-  category: string;
-}
-
-const formatCurrency = (amount: number) => {
-  if (typeof amount !== 'number' || isNaN(amount)) {
-    return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(0);
-  }
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-  }).format(amount);
-};
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ExpenseForm } from "@/components/expense-form"
+import { ExpenseList } from "@/components/expense-list"
+import { SummaryDashboard } from "@/components/summary-dashboard"
+import { ExpenseFilters } from "@/components/expense-filters"
+import { PWAInstall } from "@/components/pwa-install"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { useExpenses } from "@/hooks/use-expenses"
+import { Home, Plus, List, BarChart3, Wallet } from "lucide-react"
 
 export default function BudgetApp() {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [summary, setSummary] = useState({
-    total: 0,
-    utkarshSpent: 0,
-    tanyaSpent: 0,
-    utkarshNet: 0,
-    tanyaNet: 0,
-    categoryTotals: {},
-    monthlyTotals: {},
-  });
-  const [filters, setFilters] = useState({
-    month: "all",
-    year: "all",
-  });
+  const { expenses, summary, filters, setFilters, addExpense, deleteExpense } = useExpenses()
 
-  useEffect(() => {
-    const q = query(collection(db, "expenses"));
-    const unsubscribe = onSnapshot(q, (querySnapshot: QuerySnapshot) => {
-      const expensesData: Expense[] = [];
-      querySnapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        expensesData.push({
-          id: docSnap.id,
-          description: data.description,
-          amount: parseFloat(data.amount) || 0,
-          paidBy: data.paidBy,
-          date: data.date,
-          category: data.category,
-        });
-      });
-      setExpenses(expensesData);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    const total = expenses.reduce((acc, exp) => acc + exp.amount, 0);
-    const utkarshSpent = expenses
-      .filter(exp => exp.paidBy === "Utkarsh")
-      .reduce((acc, exp) => acc + exp.amount, 0);
-    const tanyaSpent = expenses
-      .filter(exp => exp.paidBy === "Tanya")
-      .reduce((acc, exp) => acc + exp.amount, 0);
-
-    const half = total / 2;
-    const utkarshNet = utkarshSpent - half;
-    const tanyaNet = tanyaSpent - half;
-
-    const categoryTotals = expenses.reduce((acc, expense) => {
-      const { category, amount } = expense;
-      if (category) {
-        acc[category] = (acc[category] || 0) + amount;
-      }
-      return acc;
-    }, {} as { [key: string]: number });
-
-    const monthlyTotals = expenses.reduce((acc, expense) => {
-      const month = new Date(expense.date).toLocaleString("default", { month: "long" });
-      if (month) {
-        acc[month] = (acc[month] || 0) + expense.amount;
-      }
-      return acc;
-    }, {} as { [key: string]: number });
-
-    setSummary({ total, utkarshSpent, tanyaSpent, utkarshNet, tanyaNet, categoryTotals, monthlyTotals });
-  }, [expenses]);
-
-  const addExpense = async (newExpense: Omit<Expense, "id">) => {
-    try {
-      const expenseWithNumberAmount = {
-        ...newExpense,
-        amount: parseFloat(String(newExpense.amount)) || 0,
-      };
-      await addDoc(collection(db, "expenses"), expenseWithNumberAmount);
-    } catch (e) {
-      console.error("Error adding document: ", e);
-    }
-  };
-
-  const deleteExpense = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, "expenses", id));
-    } catch (e) {
-      console.error("Error deleting document: ", e);
-    }
-  };
-
-  const filteredExpenses = expenses.filter(expense => {
-    const expenseDate = new Date(expense.date);
-    const monthMatch = filters.month === "all" || expenseDate.getMonth() + 1 === parseInt(filters.month);
-    const yearMatch = filters.year === "all" || expenseDate.getFullYear() === parseInt(filters.year);
-    return monthMatch && yearMatch;
-  });
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency: "GBP",
+    }).format(amount)
+  }
 
   const SettlementText = () => {
     if (summary.utkarshNet > 0) {
@@ -133,21 +27,21 @@ export default function BudgetApp() {
         <p className="text-left text-sm text-green-600 dark:text-green-400 pink:text-green-700 mb-4 font-medium">
           <span className="font-semibold">Tanya owes Utkarsh {formatCurrency(summary.utkarshNet)}</span>
         </p>
-      );
+      )
     } else if (summary.tanyaNet > 0) {
       return (
         <p className="text-left text-sm text-red-600 dark:text-red-400 pink:text-red-700 mb-4 font-medium">
           <span className="font-semibold">Utkarsh owes Tanya {formatCurrency(summary.tanyaNet)}</span>
         </p>
-      );
+      )
     } else {
       return (
         <p className="text-left text-sm text-green-600 dark:text-green-400 pink:text-green-700 mb-4 font-medium">
           <span className="font-semibold">All settled up!</span>
         </p>
-      );
+      )
     }
-  };
+  }
 
   return (
     <div className="min-h-screen bg-background transition-colors duration-300">
@@ -209,7 +103,7 @@ export default function BudgetApp() {
 
           <TabsContent value="add-expense" className="w-full">
             <Card className="shadow-lg border-border/50 backdrop-blur-sm">
-              <CardHeader>
+              <CardHeader className="pb-4">
                 <CardTitle className="text-lg sm:text-xl font-semibold">Add New Expense</CardTitle>
               </CardHeader>
               <CardContent>
@@ -220,14 +114,14 @@ export default function BudgetApp() {
 
           <TabsContent value="expenses" className="w-full space-y-4">
             <Card className="shadow-lg border-border/50 backdrop-blur-sm">
-              <CardHeader>
+              <CardHeader className="pb-4">
                 <CardTitle className="text-lg sm:text-xl font-semibold">Filter Expenses</CardTitle>
               </CardHeader>
               <CardContent>
                 <ExpenseFilters filters={filters} onFiltersChange={setFilters} />
               </CardContent>
             </Card>
-            <ExpenseList expenses={filteredExpenses} onDelete={deleteExpense} />
+            <ExpenseList expenses={expenses} onDelete={deleteExpense} />
           </TabsContent>
 
           <TabsContent value="summary" className="w-full">
@@ -238,5 +132,5 @@ export default function BudgetApp() {
 
       <PWAInstall />
     </div>
-  );
- }    
+  )
+}
