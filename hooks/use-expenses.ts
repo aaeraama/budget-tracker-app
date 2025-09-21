@@ -23,22 +23,118 @@ export function useExpenses() {
   const [filters, setFilters] = useState<FilterOptions>({ month: "all", category: "all" });
   const [summary, setSummary] = useState<Summary>(initialSummary);
 
-  // ... (your useEffect hooks for fetching and calculating are correct)
+  // Real-time listener for expenses from Firestore
+  useEffect(() => {
+    const expensesQuery = query(collection(db, "expenses"));
+    const unsubscribe = onSnapshot(expensesQuery, (querySnapshot: QuerySnapshot) => {
+      const liveExpenses: Expense[] = [];
+      querySnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const createdAt = (data.createdAt as Timestamp)?.toDate() || new Date();
+        liveExpenses.push({
+          id: docSnap.id,
+          description: data.description,
+          amount: parseFloat(data.amount) || 0,
+          paidBy: data.paidBy,
+          date: data.date,
+          month: data.month,
+          category: data.category,
+          splitType: data.splitType,
+          utkarshPays: data.utkarshPays || 0,
+          tanyaPays: data.tanyaPays || 0,
+          createdAt: createdAt,
+          utkarshIncome: data.utkarshIncome,
+          tanyaIncome: data.tanyaIncome,
+        });
+      });
+      setExpenses(liveExpenses);
+    });
 
+    return () => unsubscribe();
+  }, []);
+
+  // Add expense to Firestore
   const addExpense = async (expenseData: Omit<Expense, "id" | "utkarshPays" | "tanyaPays" | "createdAt">) => {
-    // ... (your addExpense function is correct)
+    const { utkarshPays, tanyaPays } = calculateSplit(
+      expenseData.amount,
+      expenseData.splitType,
+      expenseData.utkarshIncome ?? 0,
+      expenseData.tanyaIncome ?? 0,
+    );
+
+    try {
+      await addDoc(collection(db, "expenses"), {
+        ...expenseData,
+        month: expenseData.month,
+        amount: parseFloat(String(expenseData.amount)) || 0,
+        utkarshPays,
+        tanyaPays,
+        createdAt: new Date(),
+      });
+    } catch (error) {
+      console.error("Error adding expense:", error);
+    }
   };
 
+  // Delete expense from Firestore
   const deleteExpense = async (id: string) => {
-    // ... (your deleteExpense function is correct)
+    try {
+      await deleteDoc(doc(db, "expenses", id));
+    } catch (error) {
+      console.error("Error deleting expense:", error);
+    }
   };
 
-  // CORRECTED: The return object was missing the 'allExpenses' property
-  // which caused the destructuring to fail in some cases. 
-  // We will return the main 'expenses' array for both.
+  // Recalculate summary when expenses or filters change
+  useEffect(() => {
+    const filteredExpenses = expenses.filter((expense) => {
+      if (filters.month && filters.month !== "all" && expense.month !== filters.month) {
+        return false;
+      }
+      if (filters.category && filters.category !== "all" && expense.category !== filters.category) {
+        return false;
+      }
+      return true;
+    });
+
+    const calculatedTotals = calculateExpenseTotals(filteredExpenses);
+    const newSummary: Summary = {
+      ...initialSummary,
+      ...calculatedTotals,
+      totalSpent: filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0),
+      categoryTotals: filteredExpenses.reduce<Record<string, number>>((totals, expense) => {
+        totals[expense.category] = (totals[expense.category] || 0) + expense.amount;
+        return totals;
+      }, {}),
+      monthlyTotals: filteredExpenses.reduce<Record<string, number>>((totals, expense) => {
+        if (expense.month) {
+          totals[expense.month] = (totals[expense.month] || 0) + expense.amount;
+        }
+        return totals;
+      }, {}),
+    };
+    
+    newSummary.utkarshNet = newSummary.utkarshTotalPaid - newSummary.utkarshTotalOwed;
+    newSummary.tanyaNet = newSummary.tanyaTotalPaid - newSummary.tanyaTotalOwed;
+
+    setSummary(newSummary);
+
+  }, [expenses, filters]);
+
+  // The expenses passed to the page should be the filtered list
+  const filteredExpenses = expenses.filter((expense) => {
+    if (filters.month && filters.month !== "all" && expense.month !== filters.month) {
+      return false;
+    }
+    if (filters.category && filters.category !== "all" && expense.category !== filters.category) {
+      return false;
+    }
+    return true;
+  });
+
   return {
-    expenses: expenses,
-    allExpenses: expenses, // Ensure this property is always present
+    expenses: filteredExpenses,
+    allExpenses: expenses,
     summary,
     filters,
     setFilters,

@@ -13,28 +13,32 @@ import { MONTHS, CATEGORIES, PAID_BY_OPTIONS, SPLIT_TYPE_OPTIONS } from "@/lib/c
 import type { Expense } from "@/lib/types"
 
 interface ExpenseFormProps {
-  onSubmit: (expense: Omit<Expense, "id" | "utkarshPays" | "tanyaPays" | "createdAt">) => void
+  // CORRECTED: Added Promise<void> to handle the async function from the hook
+  onSubmit: (expense: Omit<Expense, "id" | "utkarshPays" | "tanyaPays" | "createdAt">) => Promise<void> | void
 }
 
 export function ExpenseForm({ onSubmit }: ExpenseFormProps) {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const [formData, setFormData] = useState({
+  const getInitialState = () => ({
     month: getCurrentMonth(),
     category: "Miscellaneous",
     description: "",
     amount: 0,
-    paidBy: "Both",
+    paidBy: "Both" as "Utkarsh" | "Tanya" | "Both",
     splitType: "50/50",
     utkarshIncome: 0,
     tanyaIncome: 0,
+    // Add a default for the date field
+    date: new Date().toISOString().split("T")[0],
   })
+
+  const [formData, setFormData] = useState(getInitialState())
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("[v0] Form submission started with data:", formData)
-
+    
     if (!formData.description || formData.amount <= 0) {
       toast({
         title: "Error",
@@ -47,26 +51,13 @@ export function ExpenseForm({ onSubmit }: ExpenseFormProps) {
     setIsSubmitting(true)
     try {
       await onSubmit(formData)
-      console.log("[v0] Form submission successful")
-
-      // Reset form
-      setFormData({
-        month: getCurrentMonth(),
-        category: "Miscellaneous",
-        description: "",
-        amount: 0,
-        paidBy: "Both",
-        splitType: "50/50",
-        utkarshIncome: 0,
-        tanyaIncome: 0,
-      })
-
+      setFormData(getInitialState()) // Reset form
       toast({
         title: "Expense Added",
         description: "Your expense has been successfully recorded.",
       })
     } catch (error) {
-      console.error("[v0] Form submission error:", error)
+      console.error("Form submission error:", error)
       toast({
         title: "Error",
         description: "Failed to add expense. Please try again.",
@@ -153,7 +144,7 @@ export function ExpenseForm({ onSubmit }: ExpenseFormProps) {
             <Label htmlFor="paidBy">Paid By</Label>
             <Select
               value={formData.paidBy}
-              onValueChange={(value) => setFormData((prev) => ({ ...prev, paidBy: value }))}
+              onValueChange={(value: "Utkarsh" | "Tanya" | "Both") => setFormData((prev) => ({ ...prev, paidBy: value }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Who paid?" />
@@ -233,18 +224,7 @@ export function ExpenseForm({ onSubmit }: ExpenseFormProps) {
           <Button
             type="button"
             variant="outline"
-            onClick={() =>
-              setFormData({
-                month: getCurrentMonth(),
-                category: "Miscellaneous",
-                description: "",
-                amount: 0,
-                paidBy: "Both",
-                splitType: "50/50",
-                utkarshIncome: 0,
-                tanyaIncome: 0,
-              })
-            }
+            onClick={() => setFormData(getInitialState())}
             disabled={isSubmitting}
           >
             Reset
