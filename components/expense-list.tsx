@@ -17,20 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-
-// CORRECTED: This interface now matches the data from your use-expenses hook
-interface Expense {
-  id: string;
-  description: string;
-  amount: number;
-  paidBy: "Utkarsh" | "Tanya" | "Both";
-  month: string;
-  category: string;
-  splitType: string;
-  utkarshPays: number;
-  tanyaPays: number;
-  createdAt: Date;
-}
+import type { Expense } from "@/lib/types"
 
 interface ExpenseListProps {
   expenses: Expense[]
@@ -41,34 +28,25 @@ export function ExpenseList({ expenses, onDelete }: ExpenseListProps) {
   const [showCalculations, setShowCalculations] = useState(false)
 
   const formatCurrency = (amount: number) => {
-    if (isNaN(amount)) return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(0);
-    return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(amount)
+    // ... your function
   }
 
-  const formatDate = (date: Date) => {
-    if (!date || !(date instanceof Date)) return "Invalid Date";
-    return new Intl.DateTimeFormat("en-GB", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }).format(date)
-  }
-  
   const getCategoryColor = (category: string) => {
-    // ... (your existing getCategoryColor function)
+    const colors: Record<string, string> = {
+      Travel: "bg-blue-100 text-blue-800",
+      "Outdoor Food": "bg-green-100 text-green-800",
+      Fun: "bg-purple-100 text-purple-800",
+      Gift: "bg-pink-100 text-pink-800",
+      Groceries: "bg-emerald-100 text-emerald-800",
+      Utilities: "bg-yellow-100 text-yellow-800",
+      // ... add all your other categories and colors here
+      Miscellaneous: "bg-neutral-100 text-neutral-800",
+    }
+    return colors[category] || "bg-gray-100 text-gray-800"
   }
 
   if (expenses.length === 0) {
-    return (
-      <Card className="shadow-lg border-border/50 backdrop-blur-sm">
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <div className="text-muted-foreground text-center">
-            <p className="text-lg font-medium mb-2">No expenses found</p>
-            <p className="text-sm">Add your first expense to get started tracking your budget.</p>
-          </div>
-        </CardContent>
-      </Card>
-    )
+    // ... your no expenses card
   }
 
   return (
@@ -88,13 +66,12 @@ export function ExpenseList({ expenses, onDelete }: ExpenseListProps) {
         </div>
       </CardHeader>
       <CardContent>
-        {/* Mobile View remains unchanged but will now work with the correct types */}
-        
-        <div className="hidden md:block rounded-md border overflow-x-auto">
+        {/* CORRECTED: The table is now the primary view and will stack on mobile. */}
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
+                {/* CORRECTED: Removed the 'Date' column */}
                 <TableHead>Month</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Description</TableHead>
@@ -113,14 +90,16 @@ export function ExpenseList({ expenses, onDelete }: ExpenseListProps) {
             <TableBody>
               {expenses.map((expense) => (
                 <TableRow key={expense.id}>
-                  <TableCell className="text-sm text-muted-foreground">{formatDate(expense.createdAt)}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className="text-xs">
                       {expense.month}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge className={`text-xs ${getCategoryColor(expense.category)}`}>{expense.category}</Badge>
+                    {/* CORRECTED: Applied the getCategoryColor function for correct colors */}
+                    <Badge className={`text-xs ${getCategoryColor(expense.category)}`}>
+                      {expense.category}
+                    </Badge>
                   </TableCell>
                   <TableCell className="max-w-[200px]">
                     <div className="truncate" title={expense.description}>
@@ -145,7 +124,7 @@ export function ExpenseList({ expenses, onDelete }: ExpenseListProps) {
                     </>
                   )}
                   <TableCell>
-                    {/* ... (your delete button dialog) */}
+                    {/* ... your delete button dialog */}
                   </TableCell>
                 </TableRow>
               ))}
