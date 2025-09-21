@@ -1,5 +1,5 @@
 import type React from "react"
-import type { Metadata, Viewport } from "next" // Import Viewport
+import type { Metadata, Viewport } from "next"
 import { Roboto } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Toaster } from "@/components/ui/toaster"
@@ -31,10 +31,8 @@ export const metadata: Metadata = {
     shortcut: "/icon-192.png",
     apple: "/icon-192.png",
   },
-  // Removed viewport and themeColor from here
 }
 
-// Added new viewport export to fix warnings
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1.0,
@@ -55,7 +53,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Removed redundant meta tags that are now handled by the metadata and viewport exports */}
         <style
           dangerouslySetInnerHTML={{
             __html: `
