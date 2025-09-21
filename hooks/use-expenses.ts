@@ -1,105 +1,103 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import type { Expense, FilterOptions, Summary } from "@/lib/types"
-import { calculateSplit, calculateExpenseTotals } from "@/lib/calculations"
+import { useState, useEffect } from "react";
+import type { Expense, FilterOptions, Summary } from "@/lib/types";
+import { calculateSplit, calculateExpenseTotals } from "@/lib/calculations";
 
-const STORAGE_KEY = "budget-app-expenses"
+import { collection, onSnapshot, addDoc, deleteDoc, doc, query, QuerySnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export function useExpenses() {
-  const [expenses, setExpenses] = useState<Expense[]>([])
-  const [filters, setFilters] = useState<FilterOptions>({})
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [filters, setFilters] = useState<FilterOptions>({ month: "all", category: "all" });
 
-  // Load expenses from localStorage on mount
+  // Real-time Firestore listener
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored)
-        setExpenses(
-          parsed.map((expense: any) => ({
-            ...expense,
-            createdAt: new Date(expense.createdAt),
-          })),
-        )
-      } catch (error) {
-        console.error("Failed to load expenses:", error)
-      }
-    }
-  }, [])
+    const expensesQuery = query(collection(db, "expenses"));
+    const unsubscribe = onSnapshot(expensesQuery, (querySnapshot: QuerySnapshot) => {
+      const liveExpenses: Expense[] = [];
+      querySnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        liveExpenses.push({
+          id: docSnap.id,
+          description: data.description,
+          amount: parseFloat(data.amount) || 0,
+          paidBy: data.paidBy,
+          date: data.date,
+          category: data.category,
+          splitType: data.splitType,
+          utkarshIncome: data.utkarshIncome,
+          tanyaIncome: data.tanyaIncome,
+          // Add other needed fields if any
+        });
+      });
+      setExpenses(liveExpenses);
+    });
 
-  // Save expenses to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses))
-  }, [expenses])
+    return () => unsubscribe();
+  }, []);
 
-  const addExpense = (expenseData: Omit<Expense, "id" | "utkarshPays" | "tanyaPays" | "createdAt">) => {
-    console.log("[v0] Adding expense with data:", expenseData)
-
+  // Add expense to Firestore
+  const addExpense = async (expenseData: Omit<Expense, "id" | "utkarshPays" | "tanyaPays" | "createdAt">) => {
     const { utkarshPays, tanyaPays } = calculateSplit(
       expenseData.amount,
       expenseData.splitType,
       expenseData.utkarshIncome,
       expenseData.tanyaIncome,
-    )
+    );
 
-    console.log("[v0] Calculated split - Utkarsh pays:", utkarshPays, "Tanya pays:", tanyaPays)
-
-    // Generate a simple UUID alternative
-    const generateId = () => {
-      return Date.now().toString(36) + Math.random().toString(36).substr(2)
+    try {
+      await addDoc(collection(db, "expenses"), {
+        ...expenseData,
+        amount: parseFloat(String(expenseData.amount)) || 0,
+        utkarshPays,
+        tanyaPays,
+        createdAt: new Date(),
+      });
+    } catch (error) {
+      console.error("Error adding expense:", error);
     }
+  };
 
-    const newExpense: Expense = {
-      ...expenseData,
-      id: generateId(),
-      utkarshPays,
-      tanyaPays,
-      createdAt: new Date(),
+  // Delete expense from Firestore
+  const deleteExpense = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "expenses", id));
+    } catch (error) {
+      console.error("Error deleting expense:", error);
     }
+  };
 
-    console.log("[v0] Created new expense:", newExpense)
-    setExpenses((prev) => {
-      const updated = [...prev, newExpense]
-      console.log("[v0] Updated expenses array length:", updated.length)
-      return updated
-    })
-  }
-
-  const deleteExpense = (id: string) => {
-    setExpenses((prev) => prev.filter((expense) => expense.id !== id))
-  }
-
+  // Filter expenses according to filters locally
   const filteredExpenses = expenses.filter((expense) => {
-    if (filters.month && expense.month !== filters.month) return false
-    if (filters.category && expense.category !== filters.category) return false
-    return true
-  })
+    if (filters.month && filters.month !== "all") {
+      const expenseMonth = new Date(expense.date).getMonth() + 1;
+      if (expenseMonth !== Number(filters.month)) return false;
+    }
+    if (filters.category && filters.category !== "all" && expense.category !== filters.category)
+      return false;
+    return true;
+  });
 
+  // Calculate summary on filtered expenses
   const summary: Summary = {
     ...calculateExpenseTotals(filteredExpenses),
     utkarshNet: 0,
     tanyaNet: 0,
     totalSpent: filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0),
-    categoryTotals: filteredExpenses.reduce(
-      (totals, expense) => {
-        totals[expense.category] = (totals[expense.category] || 0) + expense.amount
-        return totals
-      },
-      {} as Record<string, number>,
-    ),
-    monthlyTotals: filteredExpenses.reduce(
-      (totals, expense) => {
-        totals[expense.month] = (totals[expense.month] || 0) + expense.amount
-        return totals
-      },
-      {} as Record<string, number>,
-    ),
-  }
+    categoryTotals: filteredExpenses.reduce<Record<string, number>>((totals, expense) => {
+      totals[expense.category] = (totals[expense.category] || 0) + expense.amount;
+      return totals;
+    }, {}),
+    monthlyTotals: filteredExpenses.reduce<Record<string, number>>((totals, expense) => {
+      const month = new Date(expense.date).toLocaleString("default", { month: "long" });
+      totals[month] = (totals[month] || 0) + expense.amount;
+      return totals;
+    }, {}),
+  };
 
-  // Calculate net amounts
-  summary.utkarshNet = summary.utkarshTotalPaid - summary.utkarshTotalOwed
-  summary.tanyaNet = summary.tanyaTotalPaid - summary.tanyaTotalOwed
+  summary.utkarshNet = summary.utkarshTotalPaid - summary.utkarshTotalOwed;
+  summary.tanyaNet = summary.tanyaTotalPaid - summary.tanyaTotalOwed;
 
   return {
     expenses: filteredExpenses,
@@ -109,5 +107,5 @@ export function useExpenses() {
     setFilters,
     addExpense,
     deleteExpense,
-  }
+  };
 }
