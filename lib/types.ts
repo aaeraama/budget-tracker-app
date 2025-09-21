@@ -32,17 +32,23 @@ export type Category =
   | "Debt Repayments"
   | "Miscellaneous";
 
-// Keep PaidBy as union since Firestore respects this
 export type PaidBy = "Utkarsh" | "Tanya" | "Both";
 
-// Simplify Expense to accept any string category to fix TS error
+// CORRECTED: Added the missing fields to the Expense interface
 export interface Expense {
   id: string;
   description: string;
   amount: number;
   paidBy: PaidBy;
-  date: string;  // Firestore ISO date string
-  category: string;  // Changed from Category union to string
+  date: string;
+  category: string;
+  month: string;         // Added this field
+  splitType: string;     // Added this field
+  utkarshPays: number;   // Added this field
+  tanyaPays: number;     // Added this field
+  createdAt: Date;       // Added this field
+  utkarshIncome?: number; // Added this optional field
+  tanyaIncome?: number;  // Added this optional field
 }
 
 export interface Summary {
@@ -53,11 +59,11 @@ export interface Summary {
   utkarshNet: number;
   tanyaNet: number;
   totalSpent: number;
-  categoryTotals: Record<string, number>; // Changed to string keys
+  categoryTotals: Record<string, number>;
   monthlyTotals: Record<Month, number>;
 }
 
 export interface FilterOptions {
-  month?: Month | "all";
+  month?: Month | "all" | string; // Widened to string to match code
   category?: string | "all";
 }
