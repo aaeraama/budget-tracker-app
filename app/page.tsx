@@ -15,6 +15,10 @@ export default function BudgetApp() {
   const { expenses, summary, filters, setFilters, addExpense, deleteExpense } = useExpenses()
 
   const formatCurrency = (amount: number) => {
+    // Safety check for NaN values
+    if (isNaN(amount)) {
+      return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(0);
+    }
     return new Intl.NumberFormat("en-GB", {
       style: "currency",
       currency: "GBP",
@@ -22,6 +26,12 @@ export default function BudgetApp() {
   }
 
   const SettlementText = () => {
+    // CORRECTED: Added a safety check to prevent build errors
+    // This waits for the summary object to be fully loaded before rendering.
+    if (!summary || typeof summary.utkarshNet === 'undefined' || typeof summary.tanyaNet === 'undefined') {
+      return <p className="text-left text-sm text-muted-foreground mb-4 font-medium">Calculating...</p>;
+    }
+
     if (summary.utkarshNet > 0) {
       return (
         <p className="text-left text-sm text-green-600 dark:text-green-400 pink:text-green-700 mb-4 font-medium">

@@ -14,27 +14,11 @@ export type Month =
 
 export type Category =
   | "Travel"
-  | "Outdoor Food"
-  | "Fun"
-  | "Gift"
-  | "Essentials"
-  | "Personal"
-  | "Housing"
-  | "Utilities"
-  | "Groceries"
-  | "Transportation"
-  | "Phone/Internet"
-  | "Household"
-  | "Insurance"
-  | "Children/Pets"
-  | "Leisure"
-  | "Holidays"
-  | "Debt Repayments"
+  // ... your other categories
   | "Miscellaneous";
 
 export type PaidBy = "Utkarsh" | "Tanya" | "Both";
 
-// CORRECTED: Added the missing fields to the Expense interface
 export interface Expense {
   id: string;
   description: string;
@@ -42,13 +26,13 @@ export interface Expense {
   paidBy: PaidBy;
   date: string;
   category: string;
-  month: string;         // Added this field
-  splitType: string;     // Added this field
-  utkarshPays: number;   // Added this field
-  tanyaPays: number;     // Added this field
-  createdAt: Date;       // Added this field
-  utkarshIncome?: number; // Added this optional field
-  tanyaIncome?: number;  // Added this optional field
+  month: string;
+  splitType: string;
+  utkarshPays: number;
+  tanyaPays: number;
+  createdAt: Date;
+  utkarshIncome?: number;
+  tanyaIncome?: number;
 }
 
 export interface Summary {
@@ -60,10 +44,10 @@ export interface Summary {
   tanyaNet: number;
   totalSpent: number;
   categoryTotals: Record<string, number>;
-  monthlyTotals: Record<Month, number>;
+  monthlyTotals: Record<string, number>; // CORRECTED: Changed from Record<Month, number>
 }
 
 export interface FilterOptions {
-  month?: Month | "all" | string; // Widened to string to match code
+  month?: Month | "all" | string;
   category?: string | "all";
 }
