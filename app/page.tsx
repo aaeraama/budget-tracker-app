@@ -239,4 +239,4 @@ export default function BudgetApp() {
       <PWAInstall />
     </div>
   );
-}
+ }    
