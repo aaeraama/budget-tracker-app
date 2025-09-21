@@ -1,17 +1,18 @@
-"use client"
-import { Moon, Sun, Monitor, Heart } from "lucide-react"
-import { useTheme } from "next-themes"
-import { useEffect, useState } from "react"
+"use client";
 
-import { Button } from "@/components/ui/button"
+import { Moon, Sun, Monitor, Heart } from "lucide-react";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
+
+import { Button } from "@/components/ui/button";
 
 export function ThemeToggle() {
-  const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
   if (!mounted) {
     return (
@@ -19,35 +20,35 @@ export function ThemeToggle() {
         <Sun className="h-[1.2rem] w-[1.2rem]" />
         <span className="sr-only">Toggle theme</span>
       </Button>
-    )
+    );
   }
 
   const cycleTheme = () => {
     if (theme === "light") {
-      setTheme("dark")
+      setTheme("dark");
     } else if (theme === "dark") {
-      setTheme("system")
+      setTheme("system");
     } else if (theme === "system") {
-      setTheme("pink")
+      setTheme("pink");
     } else {
-      setTheme("light")
+      setTheme("light");
     }
-  }
+  };
 
   const getIcon = () => {
     switch (theme) {
       case "light":
-        return <Sun className="h-[1.2rem] w-[1.2rem]" />
+        return <Sun className="h-[1.2rem] w-[1.2rem]" />;
       case "dark":
-        return <Moon className="h-[1.2rem] w-[1.2rem]" />
+        return <Moon className="h-[1.2rem] w-[1.2rem]" />;
       case "system":
-        return <Monitor className="h-[1.2rem] w-[1.2rem]" />
+        return <Monitor className="h-[1.2rem] w-[1.2rem]" />;
       case "pink":
-        return <Heart className="h-[1.2rem] w-[1.2rem] fill-current" />
+        return <Heart className="h-[1.2rem] w-[1.2rem] fill-current" />;
       default:
-        return <Sun className="h-[1.2rem] w-[1.2rem]" />
+        return <Sun className="h-[1.2rem] w-[1.2rem]" />;
     }
-  }
+  };
 
   return (
     <Button
@@ -59,5 +60,5 @@ export function ThemeToggle() {
       {getIcon()}
       <span className="sr-only">Toggle theme</span>
     </Button>
-  )
+  );
 }

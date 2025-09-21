@@ -10,7 +10,7 @@ export type Month =
   | "September"
   | "October"
   | "November"
-  | "December"
+  | "December";
 
 export type Category =
   | "Travel"
@@ -30,40 +30,34 @@ export type Category =
   | "Leisure"
   | "Holidays"
   | "Debt Repayments"
-  | "Miscellaneous"
+  | "Miscellaneous";
 
-export type PaidBy = "Utkarsh" | "Tanya" | "Both"
+// Keep PaidBy as union since Firestore respects this
+export type PaidBy = "Utkarsh" | "Tanya" | "Both";
 
-export type SplitType = "50/50" | "Income%" | "Utkarsh" | "Tanya" | "Both"
-
+// Simplify Expense to accept any string category to fix TS error
 export interface Expense {
-  id: string
-  month: Month
-  category: Category
-  description: string
-  amount: number
-  paidBy: PaidBy
-  splitType: SplitType
-  utkarshIncome: number
-  tanyaIncome: number
-  utkarshPays: number
-  tanyaPays: number
-  createdAt: Date
+  id: string;
+  description: string;
+  amount: number;
+  paidBy: PaidBy;
+  date: string;  // Firestore ISO date string
+  category: string;  // Changed from Category union to string
 }
 
 export interface Summary {
-  utkarshTotalOwed: number
-  tanyaTotalOwed: number
-  utkarshTotalPaid: number
-  tanyaTotalPaid: number
-  utkarshNet: number
-  tanyaNet: number
-  totalSpent: number
-  categoryTotals: Record<Category, number>
-  monthlyTotals: Record<Month, number>
+  utkarshTotalOwed: number;
+  tanyaTotalOwed: number;
+  utkarshTotalPaid: number;
+  tanyaTotalPaid: number;
+  utkarshNet: number;
+  tanyaNet: number;
+  totalSpent: number;
+  categoryTotals: Record<string, number>; // Changed to string keys
+  monthlyTotals: Record<Month, number>;
 }
 
 export interface FilterOptions {
-  month?: Month
-  category?: Category
+  month?: Month | "all";
+  category?: string | "all";
 }

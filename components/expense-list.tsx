@@ -1,33 +1,47 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { collection, onSnapshot, doc, deleteDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase"; // Adjust path if needed
-import { ExpenseList } from "./expense-list";
+import React from "react";
+import type { Expense } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 
-export default function ExpensesContainer() {
-  const [expenses, setExpenses] = useState([]);
+interface ExpenseListProps {
+  expenses: Expense[];
+  onDelete: (id: string) => Promise<void> | void;
+}
 
-  useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "expenses"), (snapshot) => {
-      const liveExpenses = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setExpenses(liveExpenses);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  async function handleDelete(id: string) {
-    try {
-      await deleteDoc(doc(db, "expenses", id));
-      console.log(`Deleted expense with id: ${id}`);
-    } catch (error) {
-      console.error("Error deleting expense: ", error);
-    }
+const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDelete }) => {
+  if (!expenses || expenses.length === 0) {
+    return <p className="text-center py-4 text-muted-foreground">No expenses found.</p>;
   }
 
-  return <ExpenseList expenses={expenses} onDelete={handleDelete} />;
-}
+  return (
+    <ul className="space-y-4">
+      {expenses.map((expense) => (
+        <li key={expense.id} className="flex items-center justify-between p-4 border rounded-lg shadow-sm">
+          <div>
+            <p className="font-medium">{expense.description}</p>
+            <p className="text-sm text-muted-foreground">
+              {expense.category} - {new Date(expense.date).toLocaleDateString()}
+            </p>
+          </div>
+          <div className="flex items-center space-x-4">
+            <span className="font-semibold">
+              {new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(expense.amount)}
+            </span>
+            <Button
+              variant="destructive"
+              size="icon"
+              onClick={() => onDelete(expense.id)}
+              aria-label={`Delete expense ${expense.description}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+export default ExpenseList;

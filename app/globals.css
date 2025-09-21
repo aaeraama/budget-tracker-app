@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+/* Dark mode is handled by the .dark class selector defined below */
 
 :root {
   /* Light theme - modern clean design */

@@ -1,27 +1,25 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ExpenseForm } from "@/components/expense-form"
-import ExpenseList from "@/components/expense-list"
-import { SummaryDashboard } from "@/components/summary-dashboard"
-import { ExpenseFilters } from "@/components/expense-filters"
-import { PWAInstall } from "@/components/pwa-install"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { Home, Plus, List, BarChart3, Wallet } from "lucide-react"
-import { db } from "@/lib/firebase.js"
-import { collection, addDoc, onSnapshot, deleteDoc, doc, query, QuerySnapshot } from "firebase/firestore"
-
-// --- Helper Types and Functions (moved outside the component for cleanliness) ---
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ExpenseForm } from "@/components/expense-form";
+import ExpenseList from "@/components/expense-list";
+import { SummaryDashboard } from "@/components/summary-dashboard";
+import { ExpenseFilters } from "@/components/expense-filters";
+import { PWAInstall } from "@/components/pwa-install";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Home, Plus, List, BarChart3, Wallet } from "lucide-react";
+import { db } from "@/lib/firebase.js";
+import { collection, addDoc, onSnapshot, deleteDoc, doc, query, QuerySnapshot } from "firebase/firestore";
 
 interface Expense {
-  id: string
-  description: string
-  amount: number
-  paidBy: "Utkarsh" | "Tanya"
-  date: string
-  category: string
+  id: string;
+  description: string;
+  amount: number;
+  paidBy: "Utkarsh" | "Tanya";
+  date: string;
+  category: string;
 }
 
 const formatCurrency = (amount: number) => {
@@ -31,13 +29,11 @@ const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency: "GBP",
-  }).format(amount)
-}
-
-// --- Main App Component ---
+  }).format(amount);
+};
 
 export default function BudgetApp() {
-  const [expenses, setExpenses] = useState<Expense[]>([])
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [summary, setSummary] = useState({
     total: 0,
     utkarshSpent: 0,
@@ -46,19 +42,18 @@ export default function BudgetApp() {
     tanyaNet: 0,
     categoryTotals: {},
     monthlyTotals: {},
-  })
+  });
   const [filters, setFilters] = useState({
     month: "all",
     year: "all",
-  })
+  });
 
-  // Effect to listen for real-time data from Firestore
   useEffect(() => {
-    const q = query(collection(db, "expenses"))
+    const q = query(collection(db, "expenses"));
     const unsubscribe = onSnapshot(q, (querySnapshot: QuerySnapshot) => {
-      const expensesData: Expense[] = []
+      const expensesData: Expense[] = [];
       querySnapshot.forEach(docSnap => {
-        const data = docSnap.data()
+        const data = docSnap.data();
         expensesData.push({
           id: docSnap.id,
           description: data.description,
@@ -66,72 +61,71 @@ export default function BudgetApp() {
           paidBy: data.paidBy,
           date: data.date,
           category: data.category,
-        })
-      })
-      setExpenses(expensesData)
-    })
-    return () => unsubscribe() // Cleanup on unmount
-  }, [])
+        });
+      });
+      setExpenses(expensesData);
+    });
+    return () => unsubscribe();
+  }, []);
 
-  // Effect to recalculate the summary whenever expenses change
   useEffect(() => {
-    const total = expenses.reduce((acc, exp) => acc + exp.amount, 0)
+    const total = expenses.reduce((acc, exp) => acc + exp.amount, 0);
     const utkarshSpent = expenses
       .filter(exp => exp.paidBy === "Utkarsh")
-      .reduce((acc, exp) => acc + exp.amount, 0)
-    const tanyaSpent = expenses.filter(exp => exp.paidBy === "Tanya").reduce((acc, exp) => acc + exp.amount, 0)
+      .reduce((acc, exp) => acc + exp.amount, 0);
+    const tanyaSpent = expenses
+      .filter(exp => exp.paidBy === "Tanya")
+      .reduce((acc, exp) => acc + exp.amount, 0);
 
-    const half = total / 2
-    const utkarshNet = utkarshSpent - half
-    const tanyaNet = tanyaSpent - half
+    const half = total / 2;
+    const utkarshNet = utkarshSpent - half;
+    const tanyaNet = tanyaSpent - half;
 
     const categoryTotals = expenses.reduce((acc, expense) => {
-      const { category, amount } = expense
+      const { category, amount } = expense;
       if (category) {
-        acc[category] = (acc[category] || 0) + amount
+        acc[category] = (acc[category] || 0) + amount;
       }
-      return acc
-    }, {} as { [key: string]: number })
+      return acc;
+    }, {} as { [key: string]: number });
 
     const monthlyTotals = expenses.reduce((acc, expense) => {
-      const month = new Date(expense.date).toLocaleString("default", { month: "long" })
+      const month = new Date(expense.date).toLocaleString("default", { month: "long" });
       if (month) {
-        acc[month] = (acc[month] || 0) + expense.amount
+        acc[month] = (acc[month] || 0) + expense.amount;
       }
-      return acc
-    }, {} as { [key: string]: number })
+      return acc;
+    }, {} as { [key: string]: number });
 
-    setSummary({ total, utkarshSpent, tanyaSpent, utkarshNet, tanyaNet, categoryTotals, monthlyTotals })
-  }, [expenses])
+    setSummary({ total, utkarshSpent, tanyaSpent, utkarshNet, tanyaNet, categoryTotals, monthlyTotals });
+  }, [expenses]);
 
-  // Functions to add and delete data in Firestore
   const addExpense = async (newExpense: Omit<Expense, "id">) => {
     try {
       const expenseWithNumberAmount = {
         ...newExpense,
         amount: parseFloat(String(newExpense.amount)) || 0,
-      }
-      await addDoc(collection(db, "expenses"), expenseWithNumberAmount)
+      };
+      await addDoc(collection(db, "expenses"), expenseWithNumberAmount);
     } catch (e) {
-      console.error("Error adding document: ", e)
+      console.error("Error adding document: ", e);
     }
-  }
+  };
 
   const deleteExpense = async (id: string) => {
     try {
-      await deleteDoc(doc(db, "expenses", id))
+      await deleteDoc(doc(db, "expenses", id));
     } catch (e) {
-      console.error("Error deleting document: ", e)
+      console.error("Error deleting document: ", e);
     }
-  }
+  };
 
-  // Filtering logic
   const filteredExpenses = expenses.filter(expense => {
-    const expenseDate = new Date(expense.date)
-    const monthMatch = filters.month === "all" || expenseDate.getMonth() + 1 === parseInt(filters.month)
-    const yearMatch = filters.year === "all" || expenseDate.getFullYear() === parseInt(filters.year)
-    return monthMatch && yearMatch
-  })
+    const expenseDate = new Date(expense.date);
+    const monthMatch = filters.month === "all" || expenseDate.getMonth() + 1 === parseInt(filters.month);
+    const yearMatch = filters.year === "all" || expenseDate.getFullYear() === parseInt(filters.year);
+    return monthMatch && yearMatch;
+  });
 
   const SettlementText = () => {
     if (summary.utkarshNet > 0) {
@@ -139,21 +133,21 @@ export default function BudgetApp() {
         <p className="text-left text-sm text-green-600 dark:text-green-400 pink:text-green-700 mb-4 font-medium">
           <span className="font-semibold">Tanya owes Utkarsh {formatCurrency(summary.utkarshNet)}</span>
         </p>
-      )
+      );
     } else if (summary.tanyaNet > 0) {
       return (
         <p className="text-left text-sm text-red-600 dark:text-red-400 pink:text-red-700 mb-4 font-medium">
           <span className="font-semibold">Utkarsh owes Tanya {formatCurrency(summary.tanyaNet)}</span>
         </p>
-      )
+      );
     } else {
       return (
         <p className="text-left text-sm text-green-600 dark:text-green-400 pink:text-green-700 mb-4 font-medium">
           <span className="font-semibold">All settled up!</span>
         </p>
-      )
+      );
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-background transition-colors duration-300">
@@ -244,5 +238,5 @@ export default function BudgetApp() {
 
       <PWAInstall />
     </div>
-  )
+  );
 }
