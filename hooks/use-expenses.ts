@@ -28,7 +28,9 @@ export function useExpenses() {
           splitType: data.splitType,
           utkarshIncome: data.utkarshIncome,
           tanyaIncome: data.tanyaIncome,
-          // Add other needed fields if any
+          // CORRECTED: Added the missing lines to read the split values
+          utkarshPays: data.utkarshPays || 0,
+          tanyaPays: data.tanyaPays || 0,
         });
       });
       setExpenses(liveExpenses);
